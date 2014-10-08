@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	"log"
 	"os"
 )
-import "log"
 
 const (
 	FileName = "gmap_pin.jpg"
@@ -18,6 +20,13 @@ func main() {
 		log.Fatal(err)
 	} else {
 		fmt.Printf("successfully opened: %s\n", FileName)
+	}
+
+	img, _, err := image.DecodeConfig(file)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Printf("image size: (%d, %d)\n", img.Width, img.Height)
 	}
 
 }
