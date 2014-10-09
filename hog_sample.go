@@ -12,6 +12,22 @@ const (
 	FileName = "gmap_pin.jpg"
 )
 
+type HoG struct {
+	Feat  []float64
+	Ndims uint64
+}
+
+func NewHoG(width, height int) *HoG {
+	hog := &HoG{}
+	return hog
+}
+
+func (hog *HoG) extract() error {
+	fmt.Println("--- Extract HoG feature ---")
+
+	return nil
+}
+
 func main() {
 	// Open image file
 	file, err := os.Open(FileName)
@@ -19,14 +35,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		fmt.Printf("successfully opened: %s\n", FileName)
+		fmt.Printf("Successfully opened: %s\n", FileName)
 	}
 
 	img, _, err := image.DecodeConfig(file)
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		fmt.Printf("image size: (%d, %d)\n", img.Width, img.Height)
+		fmt.Printf("Image size: (%d, %d)\n", img.Width, img.Height)
+	}
+
+	// Compute HoG feature
+	hog := NewHoG(img.Width, img.Height)
+	err = hog.extract()
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println("--- Done ---")
 	}
 
 }
