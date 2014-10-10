@@ -12,19 +12,41 @@ const (
 	FileName = "gmap_pin.jpg"
 )
 
-type HoG struct {
-	Feat  []float64
-	Ndims uint64
+type Cell struct {
+	Width, Height int
+	NumGrad       int
 }
 
-func NewHoG(width, height int) *HoG {
+type Block struct {
+	Width, Height int
+	NumX, NumY    int
+	NumDim        int
+	Cells         []Cell
+}
+
+type HoG struct {
+	NumX, NumY int
+	Blocks     []Block
+	Descriptor []float64
+}
+
+func NewHoG(imgw, imgh int) *HoG {
 	hog := &HoG{}
+	hog.Initialize(imgw, imgh)
 	return hog
 }
 
-func (hog *HoG) extract() error {
-	fmt.Println("--- Extract HoG feature ---")
+func (self *HoG) Initialize(imgw, imgh int) {
+}
 
+func (self *Block) Initialize(imgw, imgh int) {
+}
+
+func (self *Cell) Initialize(imgw, imgh int) {
+}
+
+func (hog *HoG) Extract() error {
+	fmt.Println("--- Extract HoG Feature ---")
 	return nil
 }
 
@@ -47,11 +69,10 @@ func main() {
 
 	// Compute HoG feature
 	hog := NewHoG(img.Width, img.Height)
-	err = hog.extract()
+	err = hog.Extract()
 	if err != nil {
 		log.Fatal(err)
 	} else {
 		fmt.Println("--- Done ---")
 	}
-
 }
