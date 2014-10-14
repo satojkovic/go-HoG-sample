@@ -1,11 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	_ "image/jpeg"
+	"io/ioutil"
 	"log"
-	"os"
 )
 
 const (
@@ -72,31 +73,32 @@ func (self *Cell) Initialize() {
 	self.NumGrad = 9
 }
 
-func (hog *HoG) Extract() error {
+func (hog *HoG) Extract(img image.Image) error {
 	fmt.Println("--- Extract HoG Feature ---")
 	return nil
 }
 
 func main() {
 	// Open image file
-	file, err := os.Open(FileName)
-	defer file.Close()
+	b, err := ioutil.ReadFile(FileName)
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		fmt.Printf("Successfully opened: %s\n", FileName)
 	}
 
-	img, _, err := image.DecodeConfig(file)
+	img, str, err := image.Decode(bytes.NewBuffer(b))
+	if err != nil {
+		fmt.Println(str)
+		log.Fatal(err)
+	}
+
+	imgconf, _, err := image.DecodeConfig(bytes.NewBuffer(b))
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		fmt.Printf("Image size: (%d, %d)\n", img.Width, img.Height)
 	}
 
 	// Compute HoG feature
-	hog := NewHoG(img.Width, img.Height)
-	err = hog.Extract()
+	hog := NewHoG(imgconf.Width, imgconf.Height)
+	err = hog.Extract(img)
 	if err != nil {
 		log.Fatal(err)
 	} else {
