@@ -25,6 +25,7 @@ type Block struct {
 }
 
 type HoG struct {
+	NumPixelX, NumPixelY int // the number of pixels
 	NumCellX, NumCellY   int // the number of cells in an image
 	NumBlockX, NumBlockY int // the number of blocks in an image
 	NumDim               int
@@ -56,6 +57,10 @@ func (self *HoG) Initialize(imgw, imgh int) {
 		block.Width, block.Height)
 	fmt.Printf("The number of blocks in an image: (%d, %d)\n",
 		self.NumBlockX, self.NumBlockY)
+
+	self.NumPixelX, self.NumPixelY = imgw, imgh
+	fmt.Printf("Image size: (%d, %d)\n",
+		self.NumPixelX, self.NumPixelY)
 
 	self.NumDim = self.NumBlockX * self.NumBlockY * block.NumDim
 	fmt.Printf("Total dimensions: %d\n", self.NumDim)
