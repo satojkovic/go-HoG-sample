@@ -21,9 +21,21 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 	fmt.Println("--- Extract HoG Feature ---")
 
 	// Resize image
+	fmt.Println(" * Resize image")
 	if imgw != ResizeX || imgh != ResizeY {
 		img = resize.Resize(ResizeX, ResizeY, img, resize.Lanczos3)
-		fmt.Println("* Resized image")
+	}
+
+	// Convert to grayscale image
+	fmt.Println(" * Convert to gray scale image")
+	rect := image.Rect(0, 0, imgw, imgh)
+	grayImg := image.NewGray(rect)
+	for x := 0; x < imgw; x++ {
+		for y := 0; y < imgh; y++ {
+			oldColor := img.At(x, y)
+			grayColor := img.ColorModel().Convert(oldColor)
+			grayImg.Set(x, y, grayColor)
+		}
 	}
 
 	return nil
