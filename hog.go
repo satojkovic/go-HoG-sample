@@ -16,7 +16,19 @@ const (
 	FileName = "gmap_pin.jpg"
 	ResizeX  = 30
 	ResizeY  = 60
+	CellSize = 5 // [pixel]
+	BinRange = 20
 )
+
+type Cell struct {
+	Hist []float64
+}
+
+func NewCell() Cell {
+	cell := Cell{}
+	cell.Hist = make([]float64, 9)
+	return cell
+}
 
 func ExtractHoG(img image.Image, imgw, imgh int) error {
 	fmt.Println("--- Extract HoG Feature ---")
@@ -58,6 +70,31 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 
 			gradImg.Pix[(y*gradImg.Stride)+x] = uint8(m)
 			dirImg.Pix[(y*dirImg.Stride)+x] = uint8(theta)
+		}
+	}
+
+	// Compute cell histogram
+	fmt.Println(" * Compute cell histogram")
+	idx := 0
+	cells := make([]Cell, (ResizeX/CellSize)*(ResizeY/CellSize))
+	for x := 0; x < ResizeX; x += CellSize {
+		for y := 0; y < ResizeY; y += CellSize {
+			// In-cell computation
+			cell := NewCell()
+			for cx := 0; cx < CellSize; cx++ {
+				for cy := 0; cy < CellSize; cy++ {
+					val := dirImg.Pix[(y+cy)*dirImg.Stride+(x+cx)]
+					bin := int(val / BinRange)
+					if bin == 9 {
+						bin = bin - 1
+					}
+					cell.Hist[bin] = float64(gradImg.Pix[(y+cy)*gradImg.Stride+(x+cx)])
+				}
+			}
+			cells[idx] = cell
+
+			// next cell
+			idx++
 		}
 	}
 
