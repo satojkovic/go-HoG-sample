@@ -53,7 +53,7 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 			m := math.Sqrt(fu*fu + fv*fv)
 			theta := 0.0
 			if fu != 0.0 || fv != 0.0 {
-				theta = math.Atan(fv/fu) * 180.0 / math.Pi
+				theta = (math.Atan(fv/fu) * 180.0 / math.Pi) + 90 // 0 - 180.0
 			}
 
 			gradImg.Pix[(y*gradImg.Stride)+x] = uint8(m)
