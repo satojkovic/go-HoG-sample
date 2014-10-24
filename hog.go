@@ -28,10 +28,10 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 
 	// Convert to grayscale image
 	fmt.Println(" * Convert to gray scale image")
-	rect := image.Rect(0, 0, imgw, imgh)
+	rect := image.Rect(0, 0, ResizeX, ResizeY)
 	grayImg := image.NewGray(rect)
-	for x := 0; x < imgw; x++ {
-		for y := 0; y < imgh; y++ {
+	for x := 0; x < ResizeX; x++ {
+		for y := 0; y < ResizeY; y++ {
 			oldColor := img.At(x, y)
 			grayColor := img.ColorModel().Convert(oldColor)
 			grayImg.Set(x, y, grayColor)
