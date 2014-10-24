@@ -7,6 +7,7 @@ import (
 	_ "image/jpeg"
 	"io/ioutil"
 	"log"
+	"math"
 
 	"github.com/nfnt/resize"
 )
@@ -35,6 +36,28 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 			oldColor := img.At(x, y)
 			grayColor := img.ColorModel().Convert(oldColor)
 			grayImg.Set(x, y, grayColor)
+		}
+	}
+
+	// Compute gradient
+	fmt.Println(" * Compute gradient")
+	gradImg := image.NewGray(rect)
+	dirImg := image.NewGray(rect)
+	for x := 1; x < ResizeX-1; x++ {
+		for y := 1; y < ResizeY-1; y++ {
+			stride := grayImg.Stride
+
+			fu := float64(grayImg.Pix[(y*stride)+(x+1)] - grayImg.Pix[(y*stride)+(x-1)])
+			fv := float64(grayImg.Pix[((y+1)*stride)+x] - grayImg.Pix[((y-1)*stride)+x])
+
+			m := math.Sqrt(fu*fu + fv*fv)
+			theta := 0.0
+			if fu != 0.0 || fv != 0.0 {
+				theta = math.Atan(fv/fu) * 180.0 / math.Pi
+			}
+
+			gradImg.Pix[(y*gradImg.Stride)+x] = uint8(m)
+			dirImg.Pix[(y*dirImg.Stride)+x] = uint8(theta)
 		}
 	}
 
