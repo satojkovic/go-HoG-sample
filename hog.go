@@ -13,11 +13,13 @@ import (
 )
 
 const (
-	FileName = "gmap_pin.jpg"
-	ResizeX  = 30
-	ResizeY  = 60
-	CellSize = 5 // [pixel]
-	BinRange = 20
+	FileName  = "gmap_pin.jpg"
+	ResizeX   = 30
+	ResizeY   = 60
+	CellSize  = 5 // [pixel]
+	BinRange  = 20
+	BlockSize = 3 // [cell]
+	Epsilon   = 0.01
 )
 
 type Cell struct {
@@ -30,7 +32,7 @@ func NewCell() Cell {
 	return cell
 }
 
-func ExtractHoG(img image.Image, imgw, imgh int) error {
+func ExtractHoG(img image.Image, imgw, imgh int) ([]float64, error) {
 	fmt.Println("--- Extract HoG Feature ---")
 
 	// Resize image
@@ -98,7 +100,50 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 		}
 	}
 
-	return nil
+	// Compute block normalization
+	fmt.Println(" * Compute block normalization")
+	hog := make([]float64, 3240)
+	offset := 0
+	cellnumx, cellnumy := ResizeX/CellSize, ResizeY/CellSize
+	for cy := 0; cy < cellnumy; cy++ {
+		for cx := 0; cx < cellnumx; cx++ {
+
+			if cx+2 >= cellnumx || cy+2 >= cellnumy {
+				continue
+			}
+
+			v := blockL2Norm(cx, cy, cellnumx, cells)
+
+			// block normalization
+			hogidx := 0
+			for iny := 0; iny < BlockSize; iny++ {
+				for inx := 0; inx < BlockSize; inx++ {
+					for b := 0; b < 9; b++ {
+						val := cells[(cy+iny)*cellnumx+(cx+inx)].Hist[b]
+						hog[offset+hogidx] = val / math.Sqrt(v+Epsilon*Epsilon)
+						hogidx++
+					}
+				}
+			}
+			offset += (BlockSize * BlockSize * 9)
+		}
+	}
+
+	return hog, nil
+}
+
+func blockL2Norm(cx, cy, cellnumx int, cells []Cell) float64 {
+	v := 0.0
+	for iny := 0; iny < BlockSize; iny++ {
+		for inx := 0; inx < BlockSize; inx++ {
+			for b := 0; b < 9; b++ {
+				val := cells[(cy+iny)*cellnumx+(cx+inx)].Hist[b]
+				v += (val * val)
+			}
+		}
+	}
+
+	return v
 }
 
 func main() {
@@ -120,10 +165,13 @@ func main() {
 	}
 
 	// Extract HoG feature
-	err = ExtractHoG(img, imgconf.Width, imgconf.Height)
+	hog, err := ExtractHoG(img, imgconf.Width, imgconf.Height)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Println("--- Extracted HoG Feature ---")
+	fmt.Println(" * Len:", len(hog))
 
 	// Show HoG Feature
 }
