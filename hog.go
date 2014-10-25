@@ -43,8 +43,8 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 	fmt.Println(" * Convert to gray scale image")
 	rect := image.Rect(0, 0, ResizeX, ResizeY)
 	grayImg := image.NewGray(rect)
-	for x := 0; x < ResizeX; x++ {
-		for y := 0; y < ResizeY; y++ {
+	for y := 0; y < ResizeY; y++ {
+		for x := 0; x < ResizeX; x++ {
 			oldColor := img.At(x, y)
 			grayColor := img.ColorModel().Convert(oldColor)
 			grayImg.Set(x, y, grayColor)
@@ -55,8 +55,8 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 	fmt.Println(" * Compute gradient")
 	gradImg := image.NewGray(rect)
 	dirImg := image.NewGray(rect)
-	for x := 1; x < ResizeX-1; x++ {
-		for y := 1; y < ResizeY-1; y++ {
+	for y := 1; y < ResizeY-1; y++ {
+		for x := 1; x < ResizeX-1; x++ {
 			stride := grayImg.Stride
 
 			fu := float64(grayImg.Pix[(y*stride)+(x+1)] - grayImg.Pix[(y*stride)+(x-1)])
@@ -77,12 +77,12 @@ func ExtractHoG(img image.Image, imgw, imgh int) error {
 	fmt.Println(" * Compute cell histogram")
 	idx := 0
 	cells := make([]Cell, (ResizeX/CellSize)*(ResizeY/CellSize))
-	for x := 0; x < ResizeX; x += CellSize {
-		for y := 0; y < ResizeY; y += CellSize {
+	for y := 0; y < ResizeY; y += CellSize {
+		for x := 0; x < ResizeX; x += CellSize {
 			// In-cell computation
 			cell := NewCell()
-			for cx := 0; cx < CellSize; cx++ {
-				for cy := 0; cy < CellSize; cy++ {
+			for cy := 0; cy < CellSize; cy++ {
+				for cx := 0; cx < CellSize; cx++ {
 					val := dirImg.Pix[(y+cy)*dirImg.Stride+(x+cx)]
 					bin := int(val / BinRange)
 					if bin == 9 {
