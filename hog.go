@@ -19,7 +19,7 @@ const (
 	CellSize  = 5 // [pixel]
 	BinRange  = 20
 	BlockSize = 3 // [cell]
-	Epsilon   = 0.01
+	Epsilon   = 1.0
 )
 
 type Cell struct {
@@ -106,7 +106,7 @@ func computeCellHist(grayImg *image.Gray) [][]Cell {
 
 func computeBlockNorm(cells [][]Cell) []float64 {
 	hog := make([]float64, 3240)
-	offset := 0
+	hogidx := 0
 	cellnumx, cellnumy := ResizeX/CellSize, ResizeY/CellSize
 	for cy := 0; cy < cellnumy; cy++ {
 		for cx := 0; cx < cellnumx; cx++ {
@@ -118,17 +118,15 @@ func computeBlockNorm(cells [][]Cell) []float64 {
 			v := blockL2Norm(cx, cy, cellnumx, cells)
 
 			// block normalization
-			hogidx := 0
 			for iny := 0; iny < BlockSize; iny++ {
 				for inx := 0; inx < BlockSize; inx++ {
 					for b := 0; b < 9; b++ {
 						val := cells[cx][cy].Hist[b]
-						hog[offset+hogidx] = val / math.Sqrt(v+Epsilon*Epsilon)
+						hog[hogidx] = val / math.Sqrt(v+Epsilon*Epsilon)
 						hogidx++
 					}
 				}
 			}
-			offset += (BlockSize * BlockSize * 9)
 		}
 	}
 
