@@ -32,18 +32,16 @@ func NewCell() Cell {
 	return cell
 }
 
-func ExtractHoG(img image.Image, imgw, imgh int) ([]float64, error) {
-	fmt.Println("--- Extract HoG Feature ---")
-
-	// Resize image
-	fmt.Println(" * Resize image")
+func resizeImage(img image.Image, imgw, imgh int) (image.Image, image.Rectangle) {
 	if imgw != ResizeX || imgh != ResizeY {
 		img = resize.Resize(ResizeX, ResizeY, img, resize.Lanczos3)
 	}
-
-	// Convert to grayscale image
-	fmt.Println(" * Convert to gray scale image")
 	rect := image.Rect(0, 0, ResizeX, ResizeY)
+
+	return img, rect
+}
+
+func convertGray(img image.Image, rect image.Rectangle) *image.Gray {
 	grayImg := image.NewGray(rect)
 	for y := 0; y < ResizeY; y++ {
 		for x := 0; x < ResizeX; x++ {
@@ -53,16 +51,40 @@ func ExtractHoG(img image.Image, imgw, imgh int) ([]float64, error) {
 		}
 	}
 
-	// Compute gradient
-	fmt.Println(" * Compute gradient")
-	gradImg := image.NewGray(rect)
-	dirImg := image.NewGray(rect)
-	for y := 1; y < ResizeY-1; y++ {
-		for x := 1; x < ResizeX-1; x++ {
+	return grayImg
+}
+
+func computeCellHist(grayImg *image.Gray) [][]Cell {
+	fu, fv := 0.0, 0.0
+	cells := make([][]Cell, (ResizeX / CellSize))
+	for ci := 0; ci < (ResizeX / CellSize); ci++ {
+		cells[ci] = make([]Cell, (ResizeY / CellSize))
+	}
+	for cy := 0; cy < (ResizeY / CellSize); cy++ {
+		for cx := 0; cx < (ResizeX / CellSize); cx++ {
+			cells[cx][cy] = NewCell()
+		}
+	}
+
+	for y := 0; y < ResizeY; y++ {
+		for x := 0; x < ResizeX; x++ {
 			stride := grayImg.Stride
 
-			fu := float64(grayImg.Pix[(y*stride)+(x+1)] - grayImg.Pix[(y*stride)+(x-1)])
-			fv := float64(grayImg.Pix[((y+1)*stride)+x] - grayImg.Pix[((y-1)*stride)+x])
+			if x == 0 {
+				fu = float64(grayImg.Pix[(y*stride)+(x+1)] - grayImg.Pix[(y*stride)+(x)])
+			} else if x == ResizeX-1 {
+				fu = float64(grayImg.Pix[(y*stride)+(x)] - grayImg.Pix[(y*stride)+(x-1)])
+			} else {
+				fu = float64(grayImg.Pix[(y*stride)+(x+1)] - grayImg.Pix[(y*stride)+(x-1)])
+			}
+
+			if y == 0 {
+				fv = float64(grayImg.Pix[((y+1)*stride)+x] - grayImg.Pix[((y)*stride)+x])
+			} else if y == ResizeY-1 {
+				fv = float64(grayImg.Pix[((y)*stride)+x] - grayImg.Pix[((y-1)*stride)+x])
+			} else {
+				fv = float64(grayImg.Pix[((y+1)*stride)+x] - grayImg.Pix[((y-1)*stride)+x])
+			}
 
 			m := math.Sqrt(fu*fu + fv*fv)
 			theta := 0.0
@@ -70,38 +92,19 @@ func ExtractHoG(img image.Image, imgw, imgh int) ([]float64, error) {
 				theta = (math.Atan(fv/fu) * 180.0 / math.Pi) + 90 // 0 - 180.0
 			}
 
-			gradImg.Pix[(y*gradImg.Stride)+x] = uint8(m)
-			dirImg.Pix[(y*dirImg.Stride)+x] = uint8(theta)
-		}
-	}
-
-	// Compute cell histogram
-	fmt.Println(" * Compute cell histogram")
-	idx := 0
-	cells := make([]Cell, (ResizeX/CellSize)*(ResizeY/CellSize))
-	for y := 0; y < ResizeY; y += CellSize {
-		for x := 0; x < ResizeX; x += CellSize {
-			// In-cell computation
-			cell := NewCell()
-			for cy := 0; cy < CellSize; cy++ {
-				for cx := 0; cx < CellSize; cx++ {
-					val := dirImg.Pix[(y+cy)*dirImg.Stride+(x+cx)]
-					bin := int(val / BinRange)
-					if bin == 9 {
-						bin = bin - 1
-					}
-					cell.Hist[bin] = float64(gradImg.Pix[(y+cy)*gradImg.Stride+(x+cx)])
-				}
+			// Cell histogram
+			bin := int(theta / BinRange)
+			if bin == 9 {
+				bin -= 1
 			}
-			cells[idx] = cell
-
-			// next cell
-			idx++
+			cells[int(x/CellSize)][int(y/CellSize)].Hist[bin] += m
 		}
 	}
 
-	// Compute block normalization
-	fmt.Println(" * Compute block normalization")
+	return cells
+}
+
+func computeBlockNorm(cells [][]Cell) []float64 {
 	hog := make([]float64, 3240)
 	offset := 0
 	cellnumx, cellnumy := ResizeX/CellSize, ResizeY/CellSize
@@ -119,7 +122,7 @@ func ExtractHoG(img image.Image, imgw, imgh int) ([]float64, error) {
 			for iny := 0; iny < BlockSize; iny++ {
 				for inx := 0; inx < BlockSize; inx++ {
 					for b := 0; b < 9; b++ {
-						val := cells[(cy+iny)*cellnumx+(cx+inx)].Hist[b]
+						val := cells[cx][cy].Hist[b]
 						hog[offset+hogidx] = val / math.Sqrt(v+Epsilon*Epsilon)
 						hogidx++
 					}
@@ -129,15 +132,37 @@ func ExtractHoG(img image.Image, imgw, imgh int) ([]float64, error) {
 		}
 	}
 
+	return hog
+}
+
+func ExtractHoG(img image.Image, imgw, imgh int) ([]float64, error) {
+	fmt.Println("--- Extract HoG Feature ---")
+
+	// Resize image
+	fmt.Println(" * Resize image")
+	img, rect := resizeImage(img, imgw, imgh)
+
+	// Convert to grayscale image
+	fmt.Println(" * Convert to gray scale image")
+	grayImg := convertGray(img, rect)
+
+	// Compute cell histogram
+	fmt.Println(" * Compute gradient")
+	cells := computeCellHist(grayImg)
+
+	// Compute block normalization
+	fmt.Println(" * Compute block normalization")
+	hog := computeBlockNorm(cells)
+
 	return hog, nil
 }
 
-func blockL2Norm(cx, cy, cellnumx int, cells []Cell) float64 {
+func blockL2Norm(cx, cy, cellnumx int, cells [][]Cell) float64 {
 	v := 0.0
 	for iny := 0; iny < BlockSize; iny++ {
 		for inx := 0; inx < BlockSize; inx++ {
 			for b := 0; b < 9; b++ {
-				val := cells[(cy+iny)*cellnumx+(cx+inx)].Hist[b]
+				val := cells[cx+inx][cy+iny].Hist[b]
 				v += (val * val)
 			}
 		}
@@ -172,6 +197,4 @@ func main() {
 
 	fmt.Println("--- Extracted HoG Feature ---")
 	fmt.Println(" * Len:", len(hog))
-
-	// Show HoG Feature
 }
