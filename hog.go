@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	FileName  = "gmap_pin.jpg"
-	ResizeX   = 30
-	ResizeY   = 60
-	CellSize  = 5 // [pixel]
-	BinRange  = 20
-	BlockSize = 3 // [cell]
-	Epsilon   = 1.0
+	FileName    = "gmap_pin.jpg"
+	ResizeX     = 30
+	ResizeY     = 60
+	CellSize    = 5 // [pixel]
+	BinRange    = 20
+	BlockSize   = 3 // [cell]
+	Epsilon     = 1.0
+	Orientation = 9
 )
 
 type Cell struct {
@@ -28,7 +29,7 @@ type Cell struct {
 
 func NewCell() Cell {
 	cell := Cell{}
-	cell.Hist = make([]float64, 9)
+	cell.Hist = make([]float64, Orientation)
 	return cell
 }
 
@@ -94,7 +95,7 @@ func computeCellHist(grayImg *image.Gray) [][]Cell {
 
 			// Cell histogram
 			bin := int(theta / BinRange)
-			if bin == 9 {
+			if bin == Orientation {
 				bin -= 1
 			}
 			cells[int(x/CellSize)][int(y/CellSize)].Hist[bin] += m
@@ -105,9 +106,11 @@ func computeCellHist(grayImg *image.Gray) [][]Cell {
 }
 
 func computeBlockNorm(cells [][]Cell) []float64 {
-	hog := make([]float64, 3240)
 	hogidx := 0
 	cellnumx, cellnumy := ResizeX/CellSize, ResizeY/CellSize
+	blocknumx, blocknumy := (ResizeX/CellSize)-BlockSize+1, (ResizeY/CellSize)-BlockSize+1
+	hog := make([]float64, blocknumx*blocknumy*BlockSize*BlockSize*Orientation)
+
 	for cy := 0; cy < cellnumy; cy++ {
 		for cx := 0; cx < cellnumx; cx++ {
 
@@ -120,7 +123,7 @@ func computeBlockNorm(cells [][]Cell) []float64 {
 			// block normalization
 			for iny := 0; iny < BlockSize; iny++ {
 				for inx := 0; inx < BlockSize; inx++ {
-					for b := 0; b < 9; b++ {
+					for b := 0; b < Orientation; b++ {
 						val := cells[cx][cy].Hist[b]
 						hog[hogidx] = val / math.Sqrt(v+Epsilon*Epsilon)
 						hogidx++
@@ -159,7 +162,7 @@ func blockL2Norm(cx, cy, cellnumx int, cells [][]Cell) float64 {
 	v := 0.0
 	for iny := 0; iny < BlockSize; iny++ {
 		for inx := 0; inx < BlockSize; inx++ {
-			for b := 0; b < 9; b++ {
+			for b := 0; b < Orientation; b++ {
 				val := cells[cx+inx][cy+iny].Hist[b]
 				v += (val * val)
 			}
